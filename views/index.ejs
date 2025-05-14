@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Debate: OpenAI vs. Gemini</title>
+    <link rel="stylesheet" href="/css/style.css"> 
+</head>
+<body>
+    <div class="container">
+        <h1>AI Debate: OpenAI (For) vs. Gemini (Against)</h1>
+
+        <form id="debate-setup-form">
+            <label for="topic-input">Debate Topic:</label>
+            <textarea id="topic-input" name="topic" placeholder="Enter the debate topic here..." rows="3" required></textarea>
+            <div class="form-actions">
+                <button type="submit" id="start-debate-btn">Start Debate</button>
+                <button type="button" id="stop-debate-btn" style="display: none;">Stop Debate</button>
+            </div>
+        </form>
+
+        <div id="status-area" class="status-log">
+        </div>
+
+        <div class="debate-arena">
+            <div class="ai-column openai-column">
+                <h2>OpenAI (For) <span class="typing-indicator openai-typing" style="display:none;">...</span></h2>
+                <div id="openai-response" class="response-box"></div>
+            </div>
+            <div class="ai-column gemini-column">
+                <h2>Gemini (Against) <span class="typing-indicator gemini-typing" style="display:none;">...</span></h2>
+                <div id="gemini-response" class="response-box"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const debateForm = document.getElementById('debate-setup-form');
+        const topicInput = document.getElementById('topic-input');
+        const startBtn = document.getElementById('start-debate-btn');
+        const stopBtn = document.getElementById('stop-debate-btn');
+
+        const statusArea = document.getElementById('status-area');
+        const openaiResponseDiv = document.getElementById('openai-response');
+        const geminiResponseDiv = document.getElementById('gemini-response');
+        const openaiTypingIndicator = document.querySelector('.openai-typing');
+        const geminiTypingIndicator = document.querySelector('.gemini-typing');
+
+        let currentEventSource = null;
+        let currentDebateId = null;
+        let currentOpenAiTurnContent = '';
+        let currentGeminiTurnContent = '';
+
+        function addStatusMessage(message, type = 'info') {
+            const p = document.createElement('p');
+            p.className = type; // 'info', 'error', 'success'
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            statusArea.appendChild(p);
+            statusArea.scrollTop = statusArea.scrollHeight;
+        }
+
+        function resetUIForNewDebate() {
+            openaiResponseDiv.innerHTML = '';
+            geminiResponseDiv.innerHTML = '';
+            statusArea.innerHTML = '';
+            currentOpenAiTurnContent = '';
+            currentGeminiTurnContent = '';
+            addStatusMessage('Ready for a new debate.');
+            openaiTypingIndicator.style.display = 'none';
+            geminiTypingIndicator.style.display = 'none';
+        }
+
+        debateForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const topic = topicInput.value.trim();
+            if (!topic) {
+                addStatusMessage('Please enter a topic for the debate.', 'error');
+                return;
+            }
+
+            resetUIForNewDebate();
+            addStatusMessage(`Starting debate on: "${topic}"`);
+            startBtn.disabled = true;
+            topicInput.disabled = true;
+            stopBtn.style.display = 'inline-block';
+
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+
+            try {
+                const response = await fetch('/start-debate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'text/event-stream'
+                    },
+                    body: JSON.stringify({ topic })
+                });
+
+                if (!response.ok || !response.body) {
+                    const errorData = response.statusText || (await response.json()).error;
+                    throw new Error(`Server error while starting: ${errorData}`);
+                }
+
+                const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+
+                // eslint-disable-next-line no-constant-condition
+                while (true) {
+                    const { value, done } = await reader.read();
+
+                    if (done) {
+                        addStatusMessage('Debate stream ended by the server.', 'success');
+                        break;
+                    }
+
+                    const lines = value.split('\n\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(5)); 
+
+                                if (data.debateId && !currentDebateId) {
+                                    currentDebateId = data.debateId;
+                                }
+
+                                if (data.type === 'status') {
+                                    addStatusMessage(data.message, 'info');
+                                    if (data.event === 'debate_ended') {
+                                        enableForm(); 
+                                    }
+                                } else if (data.type === 'info') {
+                                    addStatusMessage(`[${data.source.toUpperCase()}] ${data.message}`, 'system');
+                                    if (data.source === 'openai') openaiTypingIndicator.style.display = 'inline';
+                                    if (data.source === 'gemini') geminiTypingIndicator.style.display = 'inline';
+                                } else if (data.type === 'chunk') {
+                                    if (data.source === 'openai') {
+                                        openaiTypingIndicator.style.display = 'inline';
+                                        currentOpenAiTurnContent += data.text;
+                                        openaiResponseDiv.innerHTML = currentOpenAiTurnContent.replace(/\n/g, '<br>'); 
+                                        openaiResponseDiv.scrollTop = openaiResponseDiv.scrollHeight;
+                                    } else if (data.source === 'gemini') {
+                                        geminiTypingIndicator.style.display = 'inline';
+                                        currentGeminiTurnContent += data.text;
+                                        geminiResponseDiv.innerHTML = currentGeminiTurnContent.replace(/\n/g, '<br>');
+                                        geminiResponseDiv.scrollTop = geminiResponseDiv.scrollHeight;
+                                    }
+                                } else if (data.type === 'turn_end') {
+                                    addStatusMessage(`Turn of ${data.source.toUpperCase()} completed.`, 'success');
+                                    if (data.source === 'openai') {
+                                        openaiTypingIndicator.style.display = 'none';
+                                        openaiResponseDiv.innerHTML = data.full_text.replace(/\n/g, '<br>'); 
+                                        currentOpenAiTurnContent = ''; 
+                                    } else if (data.source === 'gemini') {
+                                        geminiTypingIndicator.style.display = 'none';
+                                        geminiResponseDiv.innerHTML = data.full_text.replace(/\n/g, '<br>');
+                                        currentGeminiTurnContent = ''; 
+                                    }
+                                } else if (data.type === 'error') {
+                                    addStatusMessage(`ERROR: ${data.message}`, 'error');
+                                    if (data.event === 'debate_ended') {
+                                        enableForm();
+                                    }
+                                }
+
+                            } catch (e) {
+                                console.warn('Error parsing SSE chunk JSON:', line, e);
+                            }
+                        }
+                    }
+                } 
+
+            } catch (error) {
+                console.error('Error connecting or processing the debate stream:', error);
+                addStatusMessage(`Critical error: ${error.message}`, 'error');
+                enableForm();
+            }
+         });
+
+        stopBtn.addEventListener('click', async function() {
+            if (!currentDebateId) {
+                addStatusMessage('No active debate to stop.', 'warn');
+                return;
+            }
+            addStatusMessage(`Sending signal to stop the debate: ${currentDebateId}`, 'info');
+            try {
+                const res = await fetch('/stop-debate', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await res.json();
+                addStatusMessage(result.message || 'Stop signal processed.', res.ok ? 'info' : 'error');
+            } catch (e) {
+                console.error('Error sending /stop-debate:', e);
+                addStatusMessage('Network error while attempting to stop the debate.', 'error');
+            }
+            enableForm();
+        });
+
+        function enableForm() {
+            startBtn.disabled = false;
+            topicInput.disabled = false;
+            stopBtn.style.display = 'none';
+            openaiTypingIndicator.style.display = 'none';
+            geminiTypingIndicator.style.display = 'none';
+            currentDebateId = null; 
+        }
+        resetUIForNewDebate(); 
+    </script>
+</body>
+</html>

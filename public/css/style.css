@@ -1,0 +1,160 @@
+/* public/css/style.css - Añadir o modificar */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background-color: #f0f2f5;
+    color: #1c1e21;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    min-height: 100vh;
+    font-size: 16px;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 25px 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    width: 95%;
+    max-width: 1200px; /* Más ancho para el debate */
+}
+
+h1 {
+    color: #1877f2; /* Un azul moderno */
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2em;
+}
+
+h2 {
+    margin-top: 0; /* Ajustado para las columnas */
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 2px solid #e9ebee;
+    padding-bottom: 10px;
+    font-size: 1.4em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.typing-indicator {
+    font-size: 0.8em;
+    color: #888;
+    font-style: italic;
+}
+
+
+#debate-setup-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #606770;
+}
+
+#debate-setup-form textarea {
+    width: calc(100% - 24px); /* Ajuste por padding y borde */
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    border: 1px solid #ccd0d5;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+#debate-setup-form button {
+    flex-grow: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+#debate-setup-form button:active {
+    transform: translateY(1px);
+}
+
+
+#start-debate-btn {
+    background-color: #28a745; /* Verde éxito */
+    color: white;
+}
+#start-debate-btn:hover {
+    background-color: #218838;
+}
+#start-debate-btn:disabled {
+    background-color: #a3d8b3;
+    cursor: not-allowed;
+}
+
+#stop-debate-btn {
+    background-color: #dc3545; /* Rojo peligro */
+    color: white;
+}
+#stop-debate-btn:hover {
+    background-color: #c82333;
+}
+
+.status-log {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin-bottom: 25px;
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 0.9em;
+}
+.status-log p {
+    margin: 6px 0;
+    line-height: 1.4;
+}
+.status-log .error { color: #c82333; font-weight: bold; }
+.status-log .success { color: #218838; }
+.status-log .system { color: #007bff; font-style: italic;}
+
+
+.debate-arena {
+    display: flex;
+    flex-wrap: wrap; /* Para responsividad en pantallas pequeñas */
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.ai-column {
+    flex: 1;
+    min-width: 300px; /* Mínimo ancho para cada columna */
+    background-color: #fcfcfc;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.openai-column h2 { color: #107c10; } /* Verde para OpenAI */
+.gemini-column h2 { color: #005A9E; } /* Azul para Gemini */
+
+
+.response-box {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    min-height: 250px;
+    margin-top: 10px;
+    white-space: pre-wrap; /* Conserva saltos de línea y espacios */
+    overflow-y: auto;
+    max-height: 500px; /* Limitar altura para scroll */
+    border: 1px solid #dddfe2;
+    line-height: 1.6;
+    font-size: 0.95em;
+    color: #333;
+}
